@@ -1,7 +1,11 @@
-﻿class CoverPageModel {
-    constructor() {
-        this.data = {
-            coverpageimg: ""
+﻿(function(global) {
+    class CoverPageModel {
+        constructor() {
+            this.data = {
+                coverpageimg: ""
+            }
         }
     }
-}
+
+    global.qwapp.CoverPageModel = CoverPageModel;
+})(this);
