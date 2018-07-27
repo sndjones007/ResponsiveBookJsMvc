@@ -1,17 +1,20 @@
 {
-    "PATH" : {
-        "JSON_DATA_FOLDER" : "data/",
-        "CONTROLLER_FOLDER" : "js/controller/",
-        "LIB_FOLDER" : "js/lib/",
-        "MODEL_FOLDER" : "js/model/",
-        "ROUTER_FOLDER" : "js/router/",
-        "VIEW_FOLDER" : "js/view/"
-    },
-    "BOOTSTRAP_TAG" : "qwapp",
-    "JS_FOLDER": "js/",
-    "GENERIC_SCRIPT_LOAD_FILE" : "scriptjs.json",
-    "ROUTE_INFO_FILE" : "routedata.json",
-    "CONTROLLER_FOLDER" : "controller/",
-    "MODEL_FOLDER" : "model/",
-    "TEMPLATE_PATH_REL_TO_CONTROLLER" : "view/"
+  "JS": {
+    "LOAD_ALWAYS": [ "app/core/path_helper.js" ]
+  },
+  "PATH": {
+    "JSON_DATA_FOLDER": "data/",
+    "CONTROLLER_FOLDER": "js/controller/",
+    "LIB_FOLDER": "js/lib/",
+    "MODEL_FOLDER": "js/model/",
+    "ROUTER_FOLDER": "js/",
+    "VIEW_FOLDER": "js/view/"
+  },
+  "BOOTSTRAP_TAG": "qwapp",
+  "JS_FOLDER": "js/",
+  "GENERIC_SCRIPT_LOAD_FILE": "scriptjs.json",
+  "ROUTE_INFO_FILE": "routedata.json",
+  "CONTROLLER_FOLDER": "controller/",
+  "MODEL_FOLDER": "model/",
+  "TEMPLATE_PATH_REL_TO_CONTROLLER": "view/"
 }
