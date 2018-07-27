@@ -46,7 +46,18 @@
     * namespace.
     */
     global.qwDefine = function (typeObj) {
-        app[typeObj.name] = Object.assign(typeObj.prototype, app[typeObj]);
+        //app[typeObj.name] = Object.assign(typeObj.prototype, app[typeObj]);
+        if(global.qwapp[typeObj.name]) {
+        Object.getOwnPropertyNames(typeObj)
+                    .filter((prop) => {
+                        if (typeof typeObj[prop] == 'function') {
+                            global.qwapp[typeObj.name].prop = typeObj.prop;
+                        }
+                    });
+                }
+                else {
+                    global.qwapp[typeObj.name] = typeObj;
+                }
     }
 
     /**
@@ -205,7 +216,7 @@
     let onLoadConfig = async function() {
         console.log('Loading the config at ' + typeof app.LocalLoad + ' ' + Date.now());
 
-        let jsonLoader = Object.create(app.LocalLoad());
+        let jsonLoader = new app.LocalLoad();
         return jsonLoader.jsonFile(global.qwapp.PathHelper.getMetadataPath());
     }
 
