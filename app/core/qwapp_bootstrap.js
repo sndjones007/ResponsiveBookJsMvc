@@ -39,32 +39,41 @@
     app.ELog = console.error.bind(console);
 
     /**
+     * Resolves Promises sequentially
+     * @param {*} funcs 
+     */
+    const promiseSerial = arrPromises =>
+        arrPromises.reduce((promise) =>
+            promise.then(result => promise.then(Array.prototype.concat.bind(result))),
+                Promise.resolve([]));
+    app.promiseSerial = promiseSerial;
+
+    /**
     * A global method to define a class type. It internally merges any existing
     * same class definitions into simple type. This tries to implement the
     * concept of 'partial' in C#.
     * If no pre-existing type is found it defines the type under the app
     * namespace.
     */
-    global.qwDefine = function (typeObj) {
-        //app[typeObj.name] = Object.assign(typeObj.prototype, app[typeObj]);
-        if(global.qwapp[typeObj.name]) {
-        Object.getOwnPropertyNames(typeObj)
-                    .filter((prop) => {
-                        if (typeof typeObj[prop] == 'function') {
-                            global.qwapp[typeObj.name].prop = typeObj.prop;
-                        }
-                    });
-                }
-                else {
-                    global.qwapp[typeObj.name] = typeObj;
-                }
+    app.qwDefine = function (typeObj) {
+        if (app[typeObj.name]) {
+            Object.getOwnPropertyNames(typeObj)
+                .filter((prop) => {
+                    if (typeof typeObj[prop] == 'function') {
+                        app[typeObj.name][prop] = typeObj[prop];
+                    }
+                });
+        }
+        else {
+            app[typeObj.name] = typeObj;
+        }
     }
 
     /**
      * Class used to bind the this pointer to the funtions of the class objects.
      * This is required for specifically callback and async methods.
      */
-    global.qwDefine(
+    app.qwDefine(
         class AutoBind {
 
             /**
@@ -73,10 +82,19 @@
              * @param {any} thisObj
              */
             static execute(thisObj) {
-                Object.getOwnPropertyNames(thisObj)
+                this.bindToThis(thisObj, thisObj);
+                this.bindToThis(Object.getPrototypeOf(thisObj), thisObj);
+            }
+
+            /**
+             * Bind this to the object
+             * @param {*} thisObj 
+             */
+            static bindToThis(bindObj, thisObj) {
+                Object.getOwnPropertyNames(bindObj)
                     .filter((prop) => {
-                        if (typeof thisObj[prop] == 'function') {
-                            thisObj.prop = thisObj.prop.bind(thisObj);
+                        if (typeof bindObj[prop] == 'function') {
+                            bindObj[prop] = bindObj[prop].bind(thisObj);
                         }
                     });
             }
@@ -87,15 +105,23 @@
      * Class to help create the path for a resource in this application
      * A partial implementation
      */
-    global.qwDefine(
+    app.qwDefine(
         class PathHelper {
 
             /**
              * Get the metdata file which contains all the basic data for the data.
-            * It is equivalent to a config file or constants defined globally
-            */
+             * It is equivalent to a config file or constants defined globally
+             */
             static getMetadataPath() {
                 return new URL("metadata.json", `${global.location.protocol}//${global.location.host}`).href;
+            }
+
+            /**
+             * Get the file from the path.
+             * It is equivalent to a config file or constants defined globally
+             */
+            static getPath(fs) {
+                return new URL(fs, `${global.location.protocol}//${global.location.host}`).href;
             }
         }
     );
@@ -103,10 +129,8 @@
     /**
      * Class to load a local file
      */
-    global.qwDefine(
+    app.qwDefine(
         class LocalLoad {
-
-            constructor(){}
 
             /**
              * Method to load any file (async mode)
@@ -115,7 +139,7 @@
              * @param {string} responseType The response type to pass as parameter to XMLHttpRequest
              * @returns {number} Returns response data wrapped in Promise object
              */
-            anyfile(path, contentType, responseType) {
+            static anyfile(path, contentType, responseType) {
                 var httpConnection = new XMLHttpRequest();
                 httpConnection.open("GET", path, true);
                 httpConnection.setRequestHeader("Content-Type", contentType);
@@ -150,7 +174,7 @@
              * @param {string} path 
              * @returns {number} Returns json response data wrapped in Promise object
              */
-            jsonFile(path) {
+            static jsonFile(path) {
                 return this.anyfile(path, "application/json", "json");
             }
 
@@ -159,7 +183,7 @@
              * @param {string} path 
              * @returns {number} Returns html response data wrapped in Promise object
              */
-            htmlFile(path) {
+            static htmlFile(path) {
                 return this.anyfile(path, "text/html", "text");
             }
         }
@@ -168,16 +192,16 @@
     /**
      * Class which helps checking, loading a script dynamically
      */
-    global.qwDefine(
+    app.qwDefine(
         class ScriptLoad {
-            
+
             /**
              * Method to append and load script to the html file at the end of 
              * head tag
              * @param {string} jsrelfile 
              */
-            script(sfile) {
-                if(scriptIsLoaded(sfile)) return;
+            static addScript(sfile, noversion, ignoreErr) {
+                if(ScriptLoad.scriptIsLoaded(sfile)) return;
 
                 let script = document.createElement("script");
                 script.type = "application/javascript";
@@ -186,26 +210,65 @@
                     script.onload = () => resolve();
                 });
         
-                document.getElementsByTagName('head')[0].appendChild(script);
-                script.src = this.getScriptSrc(sfile);
+                document.getElementsByTagName("head")[0].appendChild(script);
+                script.src = (noversion) ? sfile : ScriptLoad.getScriptSrc(sfile);
         
-                return promiseObj;
+                return (ignoreErr) ? promiseObj.catch(err => app.ELog(err)) :
+                    promiseObj;
+            }
+
+            /**
+             * Method to append and load script link tag to the html file at the end
+             * @param {string} sfile 
+             * @param {*} ignoreErr 
+             */
+            static addCssLink(sfile, noversion, ignoreErr) {
+                if(ScriptLoad.linkIsLoaded(sfile)) return;
+
+                let link = document.createElement("link");
+                link.rel = "stylesheet";
+
+                let promiseObj = new Promise((resolve, reject) => {
+                    link.onload = () => resolve();
+                });
+        
+                document.getElementsByTagName("head")[0].appendChild(link);
+                link.href = (noversion) ? sfile : ScriptLoad.getLinkSrc(sfile);
+        
+                return (ignoreErr) ? promiseObj.catch(err => app.ELog(err)) :
+                    promiseObj;
             }
 
             /**
              * Check if the script is already loaded or not
              * @param {string} sfile 
              */
-            scriptIsLoaded(sfile) {
+            static scriptIsLoaded(sfile) {
                 return document.querySelector(`script[src^='${sfile}']`);
             }
 
             /**
-             * 
+             * Get the script pth name appended with date info for refresh
              * @param {*} filePath 
              */
-            getScriptSrc(filePath) {
-                return filePath + "?" + Date.now();
+            static getScriptSrc(filePath) {
+                return `${filePath}?${Date.now()}`;
+            }
+
+            /**
+             * Check if the script is already loaded or not
+             * @param {string} sfile 
+             */
+            static linkIsLoaded(sfile) {
+                return document.querySelector(`link[href^='${sfile}']`);
+            }
+
+            /**
+             * Get the script pth name appended with date info for refresh
+             * @param {*} filePath 
+             */
+            static getLinkSrc(filePath) {
+                return `${filePath}?${Date.now()}`;
             }
         }
     );
@@ -214,10 +277,9 @@
      * Method to load config file which also acts as a constant
      */
     let onLoadConfig = async function() {
-        console.log('Loading the config at ' + typeof app.LocalLoad + ' ' + Date.now());
+        app.Log(`Loading the config at ${typeof app.LocalLoad} ${Date.now()}`);
 
-        let jsonLoader = new app.LocalLoad();
-        return jsonLoader.jsonFile(global.qwapp.PathHelper.getMetadataPath());
+        return app.LocalLoad.jsonFile(app.PathHelper.getMetadataPath());
     }
 
     /**
@@ -225,26 +287,23 @@
      * Add scripts at runtime if the scripts are not already loaded
      */
     let onLoadBootstrap = async function() {
-        console.log('Bootstrapping Application at ' + Date.now());
+        app.Log(`Bootstrapping Application at ${Date.now()}`);
         
-        let jsonLoader = new app.LocalLoad();
-        let scriptsjs = await jsonLoader.jsonFile(
-            global.qwapp.PathHelper.getDataPath(
-                global.qwapp.Config.GENERIC_SCRIPT_LOAD_FILE
-            )
-        );
-
         let i = 0;
-        let promises = [];
-        let scriptLoader = new app.ScriptLoad();
-        for(; i < scriptsjs.javascript.length; ++i) {
-            promises.push(scriptLoader.script(
-                global.qwapp.PathHelper.getJsHomePath(scriptsjs.javascript[i])));
+
+        // Even if there are no scripts to load promise should process
+        // successfully
+        let promises = [Promise.resolve(1)];
+        let jsLoadAlways = app.Config.JS.LOAD_ALWAYS;
+
+        for (; i < jsLoadAlways.length; ++i) {
+            promises.push(app.ScriptLoad.addScript(
+                app.PathHelper.getPath(jsLoadAlways[i])));
         }
 
         Promise.all(promises)
-        .then(() => new global.qwapp.AppMain().init())
-        .catch((err) => console.error(err));
+        .then(() => new app.AppMain().init())
+        .catch((err) => app.ELog(err));
     }
 
     /**
@@ -252,9 +311,9 @@
      */
     global.addEventListener("load", function(event) {
         onLoadConfig().then((jsconfig) => {
-            global.qwapp.Config = Object.assign(global.qwapp.Config, jsconfig);
+            app.Config = jsconfig;
             onLoadBootstrap();
-        }).catch((err) => console.error(err));
+        }).catch((err) => app.ELog(err));
     });
 
 })(window);

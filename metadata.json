@@ -1,6 +1,21 @@
 {
   "JS": {
-    "LOAD_ALWAYS": [ "app/core/path_helper.js" ]
+    "LOAD_ALWAYS": [
+      "app/core/path_helper.js",
+      "app/core/error_handler.js",
+      "app/core/name_helper.js",
+      "app/core/route.js",
+      "app/core/appmain.js",
+      "app/core/program.js",
+      "app/core/base_controller.js",
+      "exlib/mustache.min.js"
+    ],
+    "VIEW": []
+  },
+  "CSS": {
+    "VIEW": [
+      "assets/css/pure-min.css"
+    ]
   },
   "PATH": {
     "JSON_DATA_FOLDER": "data/",
@@ -13,7 +28,7 @@
   "BOOTSTRAP_TAG": "qwapp",
   "JS_FOLDER": "js/",
   "GENERIC_SCRIPT_LOAD_FILE": "scriptjs.json",
-  "ROUTE_INFO_FILE": "routedata.json",
+  "ROUTE_INFO_FILE": "assets/data/routedata.json",
   "CONTROLLER_FOLDER": "controller/",
   "MODEL_FOLDER": "model/",
   "TEMPLATE_PATH_REL_TO_CONTROLLER": "view/"
